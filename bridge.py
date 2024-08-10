@@ -41,11 +41,7 @@ def getContractInfo(chain):
         sys.exit(1)
 
 def scanBlocks(chain):
-    if chain == 'source':
-        chain = 'avax'
-    elif chain == 'destination':
-        chain = 'bsc'
-    else:
+    if chain not in ['avax', 'bsc']:
         print(f"Invalid chain: {chain}")
         return
 
@@ -62,34 +58,37 @@ def scanBlocks(chain):
 
             logs = contract.events.Deposit().processReceipt(receipt)
             for log in logs:
-                destination_contracts = getContractInfo('bsc')
-                destination_w3 = connectTo('bsc')
-                destination_contract = destination_w3.eth.contract(
-                    address=destination_contracts['address'],
-                    abi=destination_contracts['abi']
-                )
-                destination_contract.functions.wrap(
-                    log['args']['token'],
-                    log['args']['recipient'],
-                    log['args']['amount']
-                ).transact({'from': w3.eth.default_account})
-                print(f"Deposit event found in block {block_num}, called wrap() on destination")
+                if chain == 'avax':
+                    destination_contracts = getContractInfo('bsc')
+                    destination_w3 = connectTo('bsc')
+                    destination_contract = destination_w3.eth.contract(
+                        address=destination_contracts['address'],
+                        abi=destination_contracts['abi']
+                    )
+                    destination_contract.functions.wrap(
+                        log['args']['token'],
+                        log['args']['recipient'],
+                        log['args']['amount']
+                    ).transact({'from': w3.eth.default_account})
+                    print(f"Deposit event found in block {block_num}, called wrap() on destination")
 
             logs = contract.events.Unwrap().processReceipt(receipt)
             for log in logs:
-                source_contracts = getContractInfo('avax')
-                source_w3 = connectTo('avax')
-                source_contract = source_w3.eth.contract(
-                    address=source_contracts['address'],
-                    abi=source_contracts['abi']
-                )
-                source_contract.functions.withdraw(
-                    log['args']['token'],
-                    log['args']['recipient'],
-                    log['args']['amount']
-                ).transact({'from': w3.eth.default_account})
-                print(f"Unwrap event found in block {block_num}, called withdraw() on source")
+                if chain == 'bsc':
+                    source_contracts = getContractInfo('avax')
+                    source_w3 = connectTo('avax')
+                    source_contract = source_w3.eth.contract(
+                        address=source_contracts['address'],
+                        abi=source_contracts['abi']
+                    )
+                    source_contract.functions.withdraw(
+                        log['args']['token'],
+                        log['args']['recipient'],
+                        log['args']['amount']
+                    ).transact({'from': w3.eth.default_account})
+                    print(f"Unwrap event found in block {block_num}, called withdraw() on source")
 
 if __name__ == "__main__":
-    scanBlocks('source')
-    scanBlocks('destination')
+    scanBlocks('avax')
+    scanBlocks('bsc')
+
