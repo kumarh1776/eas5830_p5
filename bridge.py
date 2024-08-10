@@ -23,19 +23,22 @@ def connectTo(chain):
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
     return w3
 
-
 def getContractInfo(chain):
     p = Path(__file__).with_name(contract_info)
     try:
-        with p.open('r')  as f:
+        with p.open('r') as f:
             contracts = json.load(f)
     except Exception as e:
         print("Failed to read contract info")
         print("Please contact your instructor")
         print(e)
         sys.exit(1)
-
-    return contracts[chain]
+    
+    if chain in contracts:
+        return contracts[chain]
+    else:
+        print(f"Chain {chain} not found in contract_info.json")
+        sys.exit(1)
 
 def scanBlocks(chain):
     if chain == 'source':
@@ -56,7 +59,7 @@ def scanBlocks(chain):
         block = w3.eth.get_block(block_num, full_transactions=True)
         for tx in block.transactions:
             receipt = w3.eth.get_transaction_receipt(tx.hash)
-            
+
             logs = contract.events.Deposit().processReceipt(receipt)
             for log in logs:
                 destination_contracts = getContractInfo('bsc')
@@ -65,7 +68,11 @@ def scanBlocks(chain):
                     address=destination_contracts['address'],
                     abi=destination_contracts['abi']
                 )
-                destination_contract.functions.wrap().transact({'from': log['args']['sender']})
+                destination_contract.functions.wrap(
+                    log['args']['token'],
+                    log['args']['recipient'],
+                    log['args']['amount']
+                ).transact({'from': w3.eth.default_account})
                 print(f"Deposit event found in block {block_num}, called wrap() on destination")
 
             logs = contract.events.Unwrap().processReceipt(receipt)
@@ -76,5 +83,13 @@ def scanBlocks(chain):
                     address=source_contracts['address'],
                     abi=source_contracts['abi']
                 )
-                source_contract.functions.withdraw().transact({'from': log['args']['sender']})
+                source_contract.functions.withdraw(
+                    log['args']['token'],
+                    log['args']['recipient'],
+                    log['args']['amount']
+                ).transact({'from': w3.eth.default_account})
                 print(f"Unwrap event found in block {block_num}, called withdraw() on source")
+
+if __name__ == "__main__":
+    scanBlocks('source')
+    scanBlocks('destination')
