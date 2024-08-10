@@ -15,10 +15,14 @@ def connectTo(chain):
         api_url = "https://api.avax-test.network/ext/bc/C/rpc"
     elif chain == 'bsc':
         api_url = "https://data-seed-prebsc-1-s1.binance.org:8545/"
+    else:
+        print(f"Invalid chain: {chain}")
+        sys.exit(1)
     
     w3 = Web3(Web3.HTTPProvider(api_url))
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
     return w3
+
 
 def getContractInfo(chain):
     p = Path(__file__).with_name(contract_info)
