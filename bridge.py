@@ -38,7 +38,11 @@ def getContractInfo(chain):
     return contracts[chain]
 
 def scanBlocks(chain):
-    if chain not in ['source', 'destination']:
+    if chain == 'source':
+        chain = 'avax'
+    elif chain == 'destination':
+        chain = 'bsc'
+    else:
         print(f"Invalid chain: {chain}")
         return
 
@@ -52,26 +56,25 @@ def scanBlocks(chain):
         block = w3.eth.get_block(block_num, full_transactions=True)
         for tx in block.transactions:
             receipt = w3.eth.get_transaction_receipt(tx.hash)
+            
             logs = contract.events.Deposit().processReceipt(receipt)
             for log in logs:
-
-                destination_contracts = getContractInfo('destination')
-                destination_w3 = connectTo('destination')
+                destination_contracts = getContractInfo('bsc')
+                destination_w3 = connectTo('bsc')
                 destination_contract = destination_w3.eth.contract(
                     address=destination_contracts['address'],
                     abi=destination_contracts['abi']
                 )
                 destination_contract.functions.wrap().transact({'from': log['args']['sender']})
-                print(f"Deposit event found in block {block_num}, called wrap()")
+                print(f"Deposit event found in block {block_num}, called wrap() on destination")
 
             logs = contract.events.Unwrap().processReceipt(receipt)
             for log in logs:
-
-                source_contracts = getContractInfo('source')
-                source_w3 = connectTo('source')
+                source_contracts = getContractInfo('avax')
+                source_w3 = connectTo('avax')
                 source_contract = source_w3.eth.contract(
                     address=source_contracts['address'],
                     abi=source_contracts['abi']
                 )
                 source_contract.functions.withdraw().transact({'from': log['args']['sender']})
-                print(f"Unwrap event found in block {block_num}, called withdraw()")
+                print(f"Unwrap event found in block {block_num}, called withdraw() on source")
